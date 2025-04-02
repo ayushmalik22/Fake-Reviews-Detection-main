@@ -1,0 +1,104 @@
+# LIBRARIES
+import streamlit as st
+import pickle
+import nltk
+from textblob import TextBlob
+from nltk.corpus import stopwords
+from nltk.stem import PorterStemmer 
+import re
+import warnings
+import os
+
+# Suppress specific sklearn warnings
+warnings.filterwarnings('ignore', category=UserWarning, module='sklearn')
+
+# Ensure stopwords are downloaded
+nltk.download('stopwords')
+
+# Load Pickle Files
+model_path = 'data and pickle files/best_model.pkl'
+vectorizer_path = 'data and pickle files/count_vectorizer.pkl'
+
+with open(model_path, 'rb') as model_file:
+    model = pickle.load(model_file)
+
+with open(vectorizer_path, 'rb') as vectorizer_file:
+    vectorizer = pickle.load(vectorizer_file)
+
+# Text Preprocessing
+sw = set(stopwords.words('english'))
+
+def text_preprocessing(text):
+    txt = TextBlob(text)
+    corrected_text = txt.correct()
+    cleaned_text = re.sub("[^a-zA-Z]", " ", str(corrected_text)).lower()
+    tokens = cleaned_text.split()
+    stemmer = PorterStemmer()
+    stemmed_tokens = [stemmer.stem(token) for token in tokens if token not in sw]
+    return " ".join(stemmed_tokens)
+
+# Text Classification
+def text_classification(text):
+    if not text.strip():
+        st.write("Please enter a review for classification.")
+    else:
+        with st.spinner("Classification in progress..."):
+            cleaned_review = text_preprocessing(text)
+            processed_review = vectorizer.transform([cleaned_review]).toarray()
+            prediction = model.predict(processed_review)
+            prediction_str = ''.join(str(i) for i in prediction)
+        
+            if prediction_str == 'True':
+                st.success("The review entered is Legitimate.")
+            else:
+                st.error("The review entered is Fraudulent.")
+
+# Page Formatting and Application
+def main():
+    st.title("Fake FeedBack Detection Using Machine Learning Techniques")
+    
+    # Expanders    
+    with st.expander("Abstract"):
+        st.write(
+            "In today's world, both businesses and customers believe reviews to be quite beneficial. "
+            "It's no surprise that review fraud has devalued the whole experience, from nasty reviews putting harm "
+            "to the business's credibility to breaking international laws. This has been seen as a developing problem, "
+            "and because it is related to natural language processing, it was critical to develop various machine learning "
+            "methodologies and techniques to achieve a breakthrough in this sector. Many e-commerce sites, such as Amazon, have "
+            "their systems in place, including Verified Purchase, which labels review language as accurate when items are purchased "
+            "directly from the website. This work proposes to use Amazon's verified purchases label to train three classifiers for "
+            "supervised training on Amazon’s labelled dataset. MNB, SVM, and LR were chosen as classifiers, and model tuning was done "
+            "using two distinct vectorizers, Count Vectorizer and TF-IDF Vectorizers. Overall, all of the trained models had an accuracy "
+            "rate of 80%, indicating that the vectorizers functioned admirably and that there are distinctions between false and actual "
+            "reviews. Out of the two, the count vectorizer improved the models' performance more, and out of the three inside counts, LR "
+            "performed the best, with an accuracy rate of 85% and a recall rate of 92%. The LR classifier was used, and it was accessible "
+            "to the public to see if the reviews entered were genuine or not, with a probability score."
+        )
+    
+    with st.expander("Related Links"):
+        st.write("[Dataset utilized](https://www.kaggle.com/akudnaver/amazon-reviews-dataset)")
+        
+    # Checkboxes
+    st.subheader("Information on the Classifier")
+    if st.checkbox("About Classifier"):
+        st.markdown('**Model:** Logistic Regression (LR)')
+        st.markdown('**Vectorizer:** Count Vectorizer')
+        st.markdown('**Test-Train splitting:** 40% - 60%')
+        st.markdown('**Spelling Correction Library:** TextBlob')
+        st.markdown('**Stemmer:** PorterStemmer')
+        
+    if st.checkbox("Evaluation Results"):
+        st.markdown('**Accuracy:** 85%')
+        st.markdown('**Precision:** 80%')
+        st.markdown('**Recall:** 92%')
+        st.markdown('**F-1 Score:** 85%')
+
+    # Implementation of the Classifier
+    st.subheader("Fake Review Classifier")
+    review = st.text_area("Enter Review: ")
+    if st.button("Check"):
+        text_classification(review)
+
+# Run Main        
+if __name__ == '__main__':
+    main()
